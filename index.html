@@ -7,8 +7,33 @@
   <link
   href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css"
   rel="stylesheet"
-/>
+  />
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+  /* Success / error message under the form */
+  #form-success {
+    display: none;               /* shown by JS */
+    width: 100%;
+    max-width: 900px;            /* keep within form width */
+    margin: 22px auto 0;         /* put a gap and center */
+    text-align: center;
+    font-size: 32px;             /* BIG text */
+    font-weight: 700;
+    line-height: 1.1;
+    color: #1a9a4a;              /* green for success (JS will switch to red on error) */
+    background: rgba(255,255,255,0.03); /* subtle background so it stands out */
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    word-break: break-word;
+  }
+
+  /* smaller screens */
+  @media (max-width: 600px) {
+    #form-success { font-size: 20px; max-width: 95%; }
+  }
+</style>
+
   <title>Bridal Parlour</title>
 </head>
 
@@ -224,25 +249,28 @@
     <div class="row">
 <form>
   <h3>Book your first visit today </h3>
-  
+
   <div class="input-box">
     <input type="text" name="name" placeholder="Enter your name" required>
   </div>
-  
+
   <div class="input-box">
     <input type="email" name="email" placeholder="Enter your email" required>
   </div>
-  
+
   <div class="input-box">
     <input type="text" name="subject" placeholder="Subject" required>
   </div>
-  
+
   <div class="input-box">
     <input type="text" name="message" placeholder="Message">
   </div>
-  
+
   <input type="submit" value="Send a message" class="btn">
 </form>
+
+<!-- added success/error message element (only this addition) -->
+<p id="form-success" style="display:none; font-weight:bold; margin-top:10px;"></p>
 
       <div class="image">z
         <img src="images/contact.png" alt="">
@@ -322,7 +350,7 @@
         </div>
       </div>
       <p class="credit">
-        COPYRIGHT &copy;  2024 ALL RIGHTS ARE RESERVED BY RAJA ADHIKARY 
+        COPYRIGHT &copy;  2024 ALL RIGHTS ARE RESERVED BY RAJA ADHIKARY
         <br>
         THE WEBSITE IS MADE BY RAJA ADHIKARY
     </p>
@@ -330,31 +358,64 @@
   <!-- footer end -->
 
    <script src="https://unpkg.com/@supabase/supabase-js"></script>
-  <script>
-    const SUPABASE_URL = "https://mnjknlhbexshnyvalfoq.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1uamtubGhiZXhzaG55dmFsZm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyMjIzMTMsImV4cCI6MjA3MTc5ODMxM30.leObGVSzx_RIH_LtJoEsCFf_hb9CFJNrvdxE14dxt4c";
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+  // config (you provided the key)
+  const SUPABASE_URL = "https://mnjknlhbexshnyvalfoq.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1uamtubGhiZXhzaG55dmFsZm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyMjIzMTMsImV4cCI6MjA3MTc5ODMxM30.leObGVSzx_RIH_LtJoEsCFf_hb9CFJNrvdxE14dxt4c";
 
-    document.querySelector("form").addEventListener("submit", async (e) => {
-      e.preventDefault();
+  // create client correctly from the global `supabase`
+  const { createClient } = supabase;
+  const client = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      const name = document.querySelector('input[name="name"]').value;
-      const email = document.querySelector('input[name="email"]').value;
-      const subject = document.querySelector('input[name="subject"]').value;
-      const message = document.querySelector('textarea[name="message"]').value;
+  // find first form on page (keeps your HTML unchanged)
+  const form = document.querySelector('form');
 
-      const { error } = await supabase
-        .from("contacts")
+  // element to show success/error (we added in HTML)
+  const successEl = document.getElementById('form-success');
+
+  // helper to show message inside page
+  function showInlineMessage(text, isError = false, duration = 5000) {
+    if (!successEl) return;
+    successEl.style.display = 'block';
+    successEl.style.color = isError ? 'red' : 'green';
+    successEl.textContent = text;
+    // hide after duration
+    clearTimeout(successEl._hideTimer);
+    successEl._hideTimer = setTimeout(() => {
+      successEl.style.display = 'none';
+    }, duration);
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = form.querySelector('input[name="name"]').value.trim();
+    const email = form.querySelector('input[name="email"]').value.trim();
+    const subject = form.querySelector('input[name="subject"]').value.trim();
+    // reading message from input (as you kept it)
+    const message = form.querySelector('input[name="message"]').value.trim();
+
+    try {
+      const { data, error } = await client
+        .from('contacts')
         .insert([{ name, email, subject, message }]);
 
       if (error) {
-        alert("Error: " + error.message);
-      } else {
-        alert("Form Submitted Sucessfully!");
-        e.target.reset();
+        console.error('Supabase insert error:', error);
+        showInlineMessage('Error: ' + (error.message || JSON.stringify(error)), true);
+        return;
       }
-    });
-  </script>
+
+      // show success inside the form area (no alert)
+      showInlineMessage('Form submitted Sucessfully', false);
+      form.reset();
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      showInlineMessage('Unexpected error. Check console.', true);
+    }
+  });
+</script>
+
 </body>
 
 </html>
